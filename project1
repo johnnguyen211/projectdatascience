@@ -1,0 +1,51 @@
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# 1. Load the dataset
+# Load the Iris dataset from scikit-learn
+iris = load_iris()
+df = pd.DataFrame(iris.data, columns=iris.feature_names)
+df['species'] = iris.target
+
+print("First 5 rows of the dataset:")
+print(df.head())
+
+# 2. Split the data into features (X) and target (y)
+# X contains the features (sepal length, sepal width, etc.)
+# y contains the target variable (species)
+X = df.drop('species', axis=1)
+y = df['species']
+
+# Split the data into training and testing sets
+# 80% for training, 20% for testing
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print("\nShape of training and testing data:")
+print(f"X_train shape: {X_train.shape}")
+print(f"X_test shape: {X_test.shape}")
+
+# 3. Train the model
+# Initialize the Decision Tree Classifier model
+model = DecisionTreeClassifier(random_state=42)
+
+# Train the model using the training data
+model.fit(X_train, y_train)
+
+# 4. Make predictions and evaluate the model
+# Use the trained model to make predictions on the test data
+y_pred = model.predict(X_test)
+
+# Calculate accuracy score
+# Accuracy measures the proportion of correct predictions
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nModel Evaluation:")
+print(f"Accuracy: {accuracy:.2f}")
+
+# Print the classification report for more detailed metrics
+# The report includes precision, recall, and F1-score for each species
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, target_names=iris.target_names))
