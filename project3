@@ -1,0 +1,67 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+# 1. Generate synthetic data
+# We'll create a simple relationship: Sales = 50 + 2 * Advertising_Cost + noise
+np.random.seed(42)
+advertising_cost = np.arange(100, 1000, 20)
+# Add some random noise to make the data more realistic
+sales = 50 + 2 * advertising_cost + np.random.normal(0, 50, len(advertising_cost)) 
+
+# Create a DataFrame from the synthetic data
+data = pd.DataFrame({'Advertising_Cost': advertising_cost, 'Sales': sales})
+
+print("First 5 rows of the synthetic dataset:")
+print(data.head())
+
+# 2. Visualize the data
+# Plot the relationship between advertising cost and sales
+plt.figure(figsize=(10, 6))
+plt.scatter(data['Advertising_Cost'], data['Sales'], color='blue', label='Actual Sales')
+plt.title('Advertising Cost vs. Sales')
+plt.xlabel('Advertising Cost')
+plt.ylabel('Sales')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 3. Split the data into features (X) and target (y)
+X = data[['Advertising_Cost']]
+y = data['Sales']
+
+# Split the data into training and testing sets (80% train, 20% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 4. Train the model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# 5. Make predictions and evaluate the model
+y_pred = model.predict(X_test)
+
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print("\nModel Evaluation:")
+print(f"Mean Squared Error (MSE): {mse:.2f}")
+print(f"R-squared (R2): {r2:.2f}")
+
+# 6. Visualize the predictions
+plt.figure(figsize=(10, 6))
+plt.scatter(X_test, y_test, color='blue', label='Actual Sales')
+plt.plot(X_test, y_pred, color='red', linewidth=2, label='Predicted Sales')
+plt.title('Linear Regression Fit on Test Data')
+plt.xlabel('Advertising Cost')
+plt.ylabel('Sales')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 7. Make a new prediction
+new_ad_cost = np.array([[1200]]) # A new value to predict
+predicted_sales = model.predict(new_ad_cost)
+print(f"\nPredicted sales for an advertising cost of $1200: ${predicted_sales[0]:.2f}")
