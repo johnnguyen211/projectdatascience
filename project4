@@ -1,0 +1,124 @@
+import tweepy
+import pandas as pd
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import classification_report
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+import seaborn as sns
+
+# Download NLTK resources (run this once)
+# nltk.download('stopwords')
+# nltk.download('wordnet')
+# nltk.download('omw-1.4')
+
+# --- PART 1: DATA COLLECTION FROM TWITTER API ---
+# Replace with your own Bearer Token
+bearer_token = "YOUR_BEARER_TOKEN"
+client = tweepy.Client(bearer_token)
+
+# Search for tweets containing the phrase "new product" in English, excluding retweets
+query = "new product -is:retweet lang:en"
+
+tweets_list = []
+try:
+    response = client.search_recent_tweets(query=query, max_results=100)
+    if response.data:
+        for tweet in response.data:
+            tweets_list.append(tweet.text)
+    else:
+        print("No tweets found for the given query.")
+except Exception as e:
+    print(f"An error occurred: {e}")
+
+df_tweets = pd.DataFrame(tweets_list, columns=['tweet_text'])
+print("--- Raw Data Collected ---")
+print(df_tweets.head())
+print("\n")
+
+# --- PART 2: DATA CLEANING AND PREPROCESSING ---
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def clean_text(text):
+    # Remove URLs, user mentions, and hashtags
+    text = re.sub(r'http\S+|@\S+|#\S+', '', text)
+    # Remove special characters and numbers
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    # Convert to lowercase
+    text = text.lower()
+    # Tokenization and stop word removal
+    tokens = text.split()
+    tokens = [word for word in tokens if word not in stop_words and len(word) > 2]
+    # Lemmatization
+    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+    return ' '.join(tokens)
+
+df_tweets['cleaned_text'] = df_tweets['tweet_text'].apply(clean_text)
+print("--- Cleaned Data ---")
+print(df_tweets.head())
+print("\n")
+
+# --- PART 3: BUILDING THE CLASSIFICATION MODEL (NAIVE BAYES) ---
+# This step requires a labeled dataset for training.
+# Here's a small, hard-coded example. In a real-world scenario, you would
+# need a larger, manually labeled dataset.
+training_data = {
+    'text': [
+        "This new product is absolutely amazing, I love it!",
+        "The quality of this product is terrible, very disappointed.",
+        "I just bought a new product.",
+        "This is a huge improvement, well worth the money.",
+        "I think this product is way too expensive.",
+        "I am looking into this new product.",
+    ],
+    'sentiment': ['positive', 'negative', 'neutral', 'positive', 'negative', 'neutral']
+}
+df_training = pd.DataFrame(training_data)
+df_training['cleaned_text'] = df_training['text'].apply(clean_text)
+
+# Vectorize the text data using TF-IDF
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(df_training['cleaned_text'])
+y = df_training['sentiment']
+
+# Train the Naive Bayes model
+model = MultinomialNB()
+model.fit(X, y)
+
+# Predict sentiment for the collected tweets
+X_test = vectorizer.transform(df_tweets['cleaned_text'])
+df_tweets['predicted_sentiment'] = model.predict(X_test)
+print("--- Predicted Sentiments ---")
+print(df_tweets[['tweet_text', 'predicted_sentiment']].head())
+print("\n")
+
+# --- PART 4: VISUALIZING THE RESULTS ---
+# Pie chart showing sentiment distribution
+plt.figure(figsize=(8, 6))
+sentiment_counts = df_tweets['predicted_sentiment'].value_counts()
+plt.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%', startangle=90, colors=['#66b3ff','#99ff99','#ffcc99'])
+plt.title('Sentiment Distribution of Tweets')
+plt.show()
+
+# Bar chart
+plt.figure(figsize=(10, 6))
+sns.countplot(x='predicted_sentiment', data=df_tweets, palette='viridis')
+plt.title('Number of Tweets by Sentiment')
+plt.xlabel('Sentiment')
+plt.ylabel('Number of Tweets')
+plt.show()
+
+# Word Cloud for positive tweets
+positive_tweets = ' '.join(df_tweets[df_tweets['predicted_sentiment'] == 'positive']['cleaned_text'])
+if positive_tweets:
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(positive_tweets)
+    plt.figure(figsize=(10, 7))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title('Word Cloud for Positive Tweets')
+    plt.show()
